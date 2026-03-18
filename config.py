@@ -77,17 +77,28 @@ def config_first_time():
         while not_set_nginx:
             nginx_input = str(input('will you use NGINX on your device? y/n '))
             if  nginx_input.lower() == 'y' and'nginx.service' in config_file["services"]:
-                config_file['user_nginx'] = True
+                config_file['use_nginx'] = True
                 not_set_nginx = False
                 print('NGINX already in the List of used Services')
             elif nginx_input.lower() == 'y':
                 config_services = config_file["services"]
                 config_services.append('nginx.service')
-                config_file['user_nginx'] = True
+                config_file['use_nginx'] = True
                 not_set_nginx = False
             elif nginx_input == 'n':
-                config_file['user_nginx'] = False
+                config_file['use_nginx'] = False
                 not_set_nginx = False
+        not_set_dns = True
+        if config_file['use_nginx']:
+            while not_set_dns:
+                dns_input = str(input('will you use that DNS in Work with NGINX? y/n '))
+                if  dns_input.lower() == 'y':
+                    config_file['use_dns'] = True
+                    not_set_dns = False
+                    config_file['dns_key'] = input('Paste in your key: ')
+                elif dns_input == 'n':
+                    config_file['use_dns'] = False
+                    not_set_dns = False
     with open('config.json', 'w') as fw:
         json.dump(config_file, fw, indent=4)
 

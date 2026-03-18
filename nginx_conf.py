@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 import os
+import httpx
 from services import manage_service
 from config import conf_json, ConfConfig
 
@@ -112,3 +113,6 @@ def delete_conf(name):
         return {'ok': True}
     else:
         return {'ok': False, 'error': 'conf_not_exists'}
+    
+async def check_domain(name: str, type: str = 'A', content: str = ''):
+    
