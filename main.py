@@ -57,6 +57,21 @@ def get_public_ip():
             send_log('error', e)
     else:
         return IP_PUBLIC
+    
+async def get_public_ip_a():
+    interface = Config.interface
+    addresses = psutil.net_if_addrs()
+    global IP_PUBLIC
+    if IP_PUBLIC  == '':
+        try:
+            if interface in addresses:
+                for i in addresses[interface]:
+                    IP_PUBLIC = i.address
+                    return IP_PUBLIC
+        except Exception as e:
+            send_log('error', e)
+    else:
+        return IP_PUBLIC
 
 async def reg_agent():
     last_hb = 0
@@ -101,53 +116,53 @@ def send_start_info():
 send_start_info()
 
 @app.get('/current')
-def current():
+async def current():
     return collect_data()
 
 @app.get('/services')
-def services():
+async def services():
     return collect_services()
 
 @app.get('/metrics')
-def metrics():
+async def metrics():
     return collect_metrics()
 
 @app.post('/service/{name}/{action}')
-def service_actions(name: str, action: str):
+async def service_actions(name: str, action: str):
     return manage_service(name, action)
 
 @app.post('/nginx/add')
-def add_nginx(config: NginxPayload):
+async def add_nginx(config: NginxPayload):
     if Config.nginx:
         return create_conf(config)
     return {'ok': False, 'error': 'agent_not_provided'}
 
 @app.post('/nginx/enable/{name}')
-def enable_nginx(name: str):
+async def enable_nginx(name: str):
     if Config.nginx:
         return enable_conf(name)
     return {'ok': False, 'error': 'agent_not_provided'}
 
 @app.post('/nginx/disable/{name}')
-def disable_nginx(name: str):
+async def disable_nginx(name: str):
     if Config.nginx:
         return disable_conf(name)
     return {'ok': False, 'error': 'agent_not_provided'}
 
 @app.post('/nginx/delete/{name}')
-def delete_nginx(name: str):
+async def delete_nginx(name: str):
     if Config.nginx:
         return delete_conf(name)
     return {'ok': False, 'error': 'agent_not_provided'}
 
 @app.get('/nginx/{name}')
-def load_nginx(name: str):
+async def load_nginx(name: str):
     if not Config.nginx:
         return {'ok': False, 'error': 'agent_not_provided'}
     return load_nginx_conf(name=name)
 
 @app.get('/nginx/all')
-def load_nginx_all():
+async def load_nginx_all():
     if not Config.nginx:
         return {'ok': False, 'error': 'agent_not_provided'}
     return load_nginx_conf(all=True)

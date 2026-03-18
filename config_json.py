@@ -1,3 +1,5 @@
-import config
+from config import config_first_time
+import asyncio
 
-config.config_first_time()
+asyncio.run(config_first_time())
+    

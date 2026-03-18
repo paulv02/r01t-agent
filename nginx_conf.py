@@ -2,7 +2,8 @@ from pydantic import BaseModel
 import os
 import httpx
 from services import manage_service
-from config import conf_json, ConfConfig
+from config import conf_json, ConfConfig, Config
+from main import send_log
 
 class NginxPayload(BaseModel):
     domain: str
@@ -20,7 +21,7 @@ class NginxPayload(BaseModel):
 CONF_PATH = '/etc/nginx/sites-available'
 CONF_ENABLED = '/etc/nginx/sites-enabled'
 
-def create_conf(data: NginxPayload):
+async def create_conf(data: NginxPayload):
     if os.path.exists(f'{CONF_ENABLED}/{data.domain}'):
         return {'ok': False, 'error': 'conf_exists'}
     conf = ''
@@ -90,7 +91,8 @@ def create_conf(data: NginxPayload):
 
     conf_json(data)
 
-    return {'ok': True}
+
+    return {'ok': True, 'data': await check_domain(name=data.domain, content=Config.target_ip)}
 
 def enable_conf(name):
     if not os.path.exists(f'{CONF_ENABLED}/{name}'):
@@ -115,4 +117,12 @@ def delete_conf(name):
         return {'ok': False, 'error': 'conf_not_exists'}
     
 async def check_domain(name: str, type: str = 'A', content: str = ''):
-    
+    if Config.dns:
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f'https://api.hosting.ionos.com/dns/v1/zones/{Config.zoneid}/records',
+                headers = {"X-API-Key": Config.dns_key, "Content-Type": "application/json"},
+                json=[{"name": name, "type": type, "content": content, "ttl": 3600, "disabled": False}]
+            )
+            send_log('info', f'subdomain {name} created: {res.json}')
+            return res.json()

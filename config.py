@@ -4,14 +4,18 @@ import subprocess
 import os
 import sys
 import shutil
+import httpx
 from pydantic import BaseModel
-
 
 class Config:
     interface = None
     name = None
     services= None
     nginx = None
+    dns = None
+    dns_key = None
+    zoneid = None
+    target_ip = None
 
 class ConfConfig(BaseModel):
     domain: str
@@ -26,7 +30,18 @@ class ConfConfig(BaseModel):
     timeout: int
     redirect_http: bool
 
-def config_first_time():
+async def get_public_ip(interface):
+    interface = interface
+    addresses = psutil.net_if_addrs()
+    try:
+        if interface in addresses:
+            for i in addresses[interface]:
+                print(i.address)
+                return i.address
+    except Exception as e:
+        return e
+
+async def config_first_time():
     if not os.path.exists('config.json'):
         with open('config.json', 'w') as f:
             json.dump({}, f)
@@ -96,6 +111,18 @@ def config_first_time():
                     config_file['use_dns'] = True
                     not_set_dns = False
                     config_file['dns_key'] = input('Paste in your key: ')
+                    async with httpx.AsyncClient() as client:
+                        res = await client.get("https://api.hosting.ionos.com/dns/v1/zones",
+                                headers={"X-API-Key": config_file['dns_key'],
+                                        "Content-Type": "application/json"})
+                        print(res.json())
+                    config_file['dns_zone'] = input('Paste in your ZoneID: ')
+                    pub_ip = await get_public_ip(config_file["interface_traffic"])
+                    ip_dns = input(f'Paste in your target IP or "r" for default: "{pub_ip}": ')
+                    if ip_dns == 'r':
+                        config_file['dns_traget_ip'] = pub_ip
+                    else:
+                        config_file['dns_traget_ip'] = ip_dns
                 elif dns_input == 'n':
                     config_file['use_dns'] = False
                     not_set_dns = False
@@ -128,6 +155,12 @@ def load_config():
         Config.name = config["name"]
         Config.services = config["services"]
         Config.nginx = config["user_nginx"]
+        if config["user_nginx"]:
+            Config.dns = config["use_dns"]
+            if Config.dns:
+                Config.dns_key = config["dns_key"]
+                Config.zoneid = config["dns_zone"]
+                Config.target_ip = config['dns_traget_ip']
 
 def load_nginx_conf(all: bool = False, name: str = ''):
     with open('confs.json', 'r') as f:
