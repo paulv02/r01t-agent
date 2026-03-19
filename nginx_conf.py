@@ -17,6 +17,7 @@ class NginxPayload(BaseModel):
     max_body_size: str
     timeout: int
     redirect_http: bool
+    auth: bool
 
 CONF_PATH = '/etc/nginx/sites-available'
 CONF_ENABLED = '/etc/nginx/sites-enabled'
@@ -33,6 +34,20 @@ async def create_conf(data: NginxPayload):
                 proxy_set_header Upgrade $http_upgrade;
                 proxy_set_header Connection "upgrade";
                 """
+        auth_lines = ''
+        if data.auth:
+            auth_lines = f"""
+                auth_request /r01t_auth;
+                location = /r01t_auth {{
+                    internal;
+                    proxy_pass http://10.100.0.10:6666/auth_session;
+                    proxy_pass_request_body off;
+                    proxy_set_header Content-Length "";
+                    proxy_set_header X-Original-URI $request_uri;
+                    proxy_set_header Cookie $http_cookie;
+                    proxy_set_header Authorization $http_authorization;
+                    }}
+                """
         conf += f"""
             server{{
                 listen 80;
@@ -47,6 +62,7 @@ async def create_conf(data: NginxPayload):
                 ssl_protocols TLSv1.2 TLSv1.3;
                 client_max_body_size {data.max_body_size};
                 location /{data.location} {{
+                    {auth_lines}
                     {websocket_lines}
                     proxy_pass http://{data.target_ip}:{data.port};
                     proxy_set_header Host $host;

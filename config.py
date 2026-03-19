@@ -29,6 +29,7 @@ class ConfConfig(BaseModel):
     max_body_size: str
     timeout: int
     redirect_http: bool
+    auth: bool
 
 async def get_public_ip(interface):
     interface = interface
@@ -144,7 +145,8 @@ def conf_json(data: ConfConfig):
                                 'location': data.location,
                                 'max_body_size': data.max_body_size,
                                 'timeout': data.timeout,
-                                'redirect_http': data.redirect_http}
+                                'redirect_http': data.redirect_http,
+                                'auth': data.auth}
     with open('confs.json', 'w') as fw:
         json.dump(config_file, fw, indent=4)
 
